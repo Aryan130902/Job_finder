@@ -1,6 +1,4 @@
 from core.resume.parser import (
-    LatexResumeParser,
-    parse_latex_resume,
     Resume,
     Education,
     Experience,
@@ -8,16 +6,18 @@ from core.resume.parser import (
     Skill,
     Position,
     Achievement,
+    LatexResumeParser,
+    parse_latex_resume,
 )
 
 __all__ = [
-    "LatexResumeParser",
-    "parse_latex_resume",
     "Resume",
-    "Education",
+    "Education", 
     "Experience",
     "Project",
     "Skill",
     "Position",
     "Achievement",
+    "LatexResumeParser",
+    "parse_latex_resume",
 ]

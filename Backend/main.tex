@@ -1,0 +1,254 @@
+%---- Required Packages and Functions ----
+
+\documentclass[a4paper,11pt]{article}
+\usepackage{latexsym}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{ragged2e}
+\usepackage[empty]{fullpage}
+\usepackage{wrapfig}
+\usepackage{lipsum}
+\usepackage{tabularx}
+\usepackage{titlesec}
+\usepackage{geometry}
+\usepackage{marvosym}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage{fontawesome5}
+\usepackage{multicol}
+\usepackage{graphicx}
+\usepackage{cfr-lm}
+\usepackage[T1]{fontenc}
+\setlength{\footskip}{4.08003pt} 
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\geometry{left=1.0cm, top=1cm, right=1cm, bottom=1cm}
+
+\usepackage[most]{tcolorbox}
+\tcbset{
+	frame code={}
+	center title,
+	left=0pt,
+	right=0pt,
+	top=0pt,
+	bottom=0pt,
+	colback=gray!20,
+	colframe=white,
+	width=\dimexpr\textwidth\relax,
+	enlarge left by=-2mm,
+	boxsep=4pt,
+	arc=0pt,outer arc=0pt,
+}
+
+\urlstyle{same}
+\raggedright
+
+% Sections formatting
+\titleformat{\section}{
+  \vspace{-2pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-4pt}]
+
+%-------------------------
+% Custom commands
+
+\newcommand{\resumeItem}[2]{
+  \item{
+    \textbf{#1}{\hspace{0.5mm}#2 \vspace{-0.5mm}}
+  }
+}
+
+\newcommand{\resumePOR}[3]{
+\vspace{0.3mm}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+        \textbf{#1}\hspace{0.3mm}#2 & \textit{\small{#3}} 
+    \end{tabular*}
+    \vspace{-1.5mm}
+}
+
+\newcommand{\resumeSubheading}[4]{
+\vspace{0.3mm}\item
+    \begin{tabular*}{0.98\textwidth}[t]{l@{\extracolsep{\fill}}r}
+        \textbf{#1} & \textit{\footnotesize{#4}} \\
+        \textit{\footnotesize{#3}} &  \footnotesize{#2}\\
+    \end{tabular*}
+    \vspace{-2mm}
+}
+
+\newcommand{\resumeProject}[4]{
+\vspace{0.3mm}\item
+    \begin{tabular*}{0.98\textwidth}[t]{l@{\extracolsep{\fill}}r}
+        \textbf{#1} & \textit{\footnotesize{#3}} \\
+        \footnotesize{\textit{#2}} & \footnotesize{#4}
+    \end{tabular*}
+    \vspace{-2mm}
+}
+
+\renewcommand{\labelitemi}{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=*,labelsep=0mm]}
+\newcommand{\resumeItemListStart}{\begin{justify}\begin{itemize}[leftmargin=3ex,rightmargin=2ex,noitemsep,labelsep=1.2mm,itemsep=0mm]\small}
+
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}\vspace{1mm}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\end{justify}\vspace{-1mm}}
+
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcolumntype{R}{>{\raggedleft\arraybackslash}X}
+
+%-------------------------------------------
+%%%%%%  CV STARTS HERE  %%%%%%%%%%%
+
+\begin{document}
+\fontfamily{cmr}\selectfont
+
+%----------HEADING-----------------
+
+\parbox{\dimexpr\linewidth-0.3cm\relax}{
+\begin{tabularx}{\linewidth}{L r}
+  \textbf{\Large Aryan Tiwari} \\
+  {\footnotesize \faPhone\ +91 - 9109305021} &
+  \href{https://www.linkedin.com/in/aryan-tiwari-368050200/}{LinkedIn Profile} \\
+  {\footnotesize \faEnvelope\ \href{mailto:aryantiwari130902@gmail.com}{aryantiwari130902@gmail.com}} &
+  \href{https://aryantiwariportfolio.netlify.app/}{Portfolio Website}
+\end{tabularx}
+}
+
+\vspace{-2mm}
+
+%-----------EDUCATION-----------
+
+\section{\textbf{Education}}
+
+\resumeSubHeadingListStart
+\resumeSubheading
+{Shri Govindram Seksaria Institute of Technology and Science}{CGPA : 8.2}
+{B.Tech, Information Technology}{2024}
+\resumeSubHeadingListEnd
+
+\vspace{-2mm}
+
+%-----------EXPERIENCE-----------
+
+\section{\textbf{Experience}}
+
+\resumeSubheading
+{Deloitte}{Hyderabad}
+{SDE - 1}{July 2024 -- Present}
+
+\resumeItemListStart
+
+\item {Engineered \textbf{ASP.NET Core microservices} to extract data from \textbf{SAP SuccessFactors} and integrate with \textbf{Azure Synapse PySpark notebooks} for complex transformations. Built backend services to securely transfer processed data to downstream applications, enabling scalable processing of \textbf{10+ lakh candidate records}.}
+
+\item {Designed and implemented \textbf{.NET integration services} for \textbf{Luxembourg and India member firms}, enabling high-volume cross-system data exchange. Optimized database performance using \textbf{indexing and query tuning}, improving processing efficiency by \textbf{40\%}.}
+
+\item {Built backend \textbf{.NET Core microservices} for Deloitte’s \textbf{Assignment Pro Mobility Platform} and \textbf{Performance Management (iRPM)} systems, implementing multiple feature enhancements and scalable backend services.}
+
+\item {Migrated authentication to \textbf{Microsoft Entra user-managed identity} for passwordless database connectivity and collaborated with the \textbf{Infrastructure team} to deploy services on \textbf{Azure App Service} with \textbf{Azure Key Vault} and certificate-based authentication.}
+
+\resumeItemListEnd
+
+\resumeSubheading
+{Tally Solutions}{Remote}
+{SDE Intern}{Oct. 2023 - Jan 2024}
+
+\resumeItemListStart
+
+\item {Built an end-to-end hackathon management platform that streamlined event workflows and improved operational efficiency by \textbf{50\%}. Delivered the complete system within \textbf{2.5 months}.}
+
+\item {Architected the application using \textbf{React.js}, \textbf{Tailwind CSS}, \textbf{Node.js}, and \textbf{Prisma} with a \textbf{PostgreSQL} database supporting \textbf{12,000+ users}.}
+
+\resumeItemListEnd
+
+\vspace{-2mm}
+
+%-----------PROJECTS-----------
+
+\section{\textbf{Projects}}
+
+\resumeProject
+{Rocket-type}
+{\href{https://rocket-type-client.vercel.app/}{Project Link}}
+{2023}
+
+\resumeItemListStart
+\item {Developed a \textbf{real-time multiplayer typing platform} using the \textbf{MERN stack} and \textbf{Socket.io}.}
+\item {Implemented state management using \textbf{Zustand}; finalist in the \textbf{National-level Tally CodeBrewers Hackathon}.}
+\resumeItemListEnd
+
+\resumeProject
+{Technology Assessment}
+{Tech Stack : Python | FastAPI | React}
+{2022}
+
+\resumeItemListStart
+\item {Built a \textbf{Generative AI-based evaluation system} helping architects assess vendors across multiple criteria.}
+\item {Saved \textbf{200+ hours} of architect effort and \textbf{40+ hours} of analyst effort, estimated savings \textbf{\$238K}.}
+\resumeItemListEnd
+
+\vspace{-2mm}
+
+%-----------Technical Skills-----------
+
+\section{\textbf{Technical and Software Skills}}
+
+\begin{itemize}[leftmargin=0.1in,label={}]
+\small{
+\item{
+\textbf{Programming Skills}: Python, CSharp, .NET Core, MSSQL, Azure Synapse, FastAPI, Azure Cloud, Azure functions, App services, Datalake storages, Azure SQL Databases
+}
+\item{
+\textbf{Software Skills}: Figma, VS Code, Visual Studio, SSMS, Azure AI foundary, Github copilot, git, Azure DevOps 
+}
+}
+\end{itemize}
+
+\vspace{-2mm}
+
+%-----------Positions-----------
+
+\section{\textbf{Positions of Responsibility}}
+
+\resumeSubHeadingListStart
+
+\resumePOR{Head Of Design, }
+{E Cell SGSITS}
+{2022-2024}
+
+Led a design team of \textbf{15+ members}.
+
+\resumePOR{Founding Member, }
+{STOR-E By E-Cell}
+{2022-2024}
+
+Launched college merchandise venture; drove \textbf{2,000+ sales}.
+
+\resumeSubHeadingListEnd
+
+\vspace{-2mm}
+
+%-----------Achievements-----------
+
+\section{\textbf{Achievements}}
+
+\resumeSubHeadingListStart
+
+\resumePOR{}
+{Received \textbf{3 Spot Awards} and \textbf{Applause Award} at Deloitte.}
+{2024-Present}
+
+\resumePOR{Medhavi Scholarship}
+{ for academic excellence}
+{2020-2024}
+
+\resumePOR{Top 10 – CodeBrewers}
+{ among \textbf{12,000+} participants}
+{2023}
+
+\resumeSubHeadingListEnd
+
+\end{document}
