@@ -11,6 +11,8 @@ TexSoup>=0.3.1
 
 # --- Basic NLP (Optional: for keyword extraction) ---
 tensorflow>=2.15.0
+transformers>=4.40.0
+torch>=2.0.0
 
 # --- Utility Libraries ---
 python-dotenv>=1.0.1
@@ -27,3 +29,6 @@ isort>=5.13.2
 
 # --- Vector DB (Open Source) ---
 chromadb>=0.4.24
+
+# --- Excel Export ---
+openpyxl>=3.1.2
