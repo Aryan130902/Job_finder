@@ -5,7 +5,7 @@ import tempfile
 # ensure top-level `Backend` package is importable when tests run
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from core.resume.parser import parse_latex_resume
+from core.parser.latex_parser import parse_latex_resume
 
 
 LATEX_SAMPLE = r"""

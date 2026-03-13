@@ -1,28 +1,33 @@
+"""
+Resume API Router.
+
+This module provides FastAPI endpoints for resume parsing,
+optimization, and management.
+"""
+
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, List
 import os
 import uuid
 
-from core.resume.parser import (
-    parse_latex_resume, 
-    Resume, 
-    EnhancedResumeParser,
-    create_enhanced_parser
-)
-from core.editor.optimizer import optimize_resume_for_job, ATSResume
-from core.editor.generator import generate_resume_document
+from core.parser.latex_parser import parse_latex_resume
+from core.parser.orchestrator import get_orchestrator, create_orchestrator
+from core.optimizer.optimizer import optimize_resume_for_job
+from core.optimizer.generator import generate_resume_document
 
 
 router = APIRouter(prefix="/resume", tags=["resume"])
 
 
 class JobDescriptionRequest(BaseModel):
+    """Request model for job description optimization."""
     job_description: str
     company_name: Optional[str] = "Default"
 
 
 class OptimizeRequest(BaseModel):
+    """Request model for resume optimization."""
     resume_path: str
     job_description: str
     company_name: Optional[str] = "Default"
@@ -30,12 +35,14 @@ class OptimizeRequest(BaseModel):
 
 
 class ParseAndStoreRequest(BaseModel):
+    """Request model for parsing and storing resume."""
     store_in_chroma: Optional[bool] = True
     export_to_excel: Optional[bool] = False
     excel_path: Optional[str] = None
 
 
 class SearchRequest(BaseModel):
+    """Request model for resume search."""
     query: str
     search_type: Optional[str] = "text"
     top_k: Optional[int] = 10
@@ -43,15 +50,22 @@ class SearchRequest(BaseModel):
 
 _enhanced_parser = None
 
-def get_enhanced_parser() -> EnhancedResumeParser:
+
+def get_enhanced_parser():
+    """Get or create singleton enhanced parser."""
     global _enhanced_parser
     if _enhanced_parser is None:
-        _enhanced_parser = create_enhanced_parser()
+        _enhanced_parser = create_orchestrator()
     return _enhanced_parser
 
 
 @router.post("/parse")
 async def parse_resume(resume: UploadFile = File(...)):
+    """
+    Parse a LaTeX resume file.
+    
+    Upload a LaTeX resume file to extract structured information.
+    """
     try:
         content = await resume.read()
         
@@ -91,6 +105,12 @@ async def parse_resume_with_ner(
     export_to_excel: bool = Query(False),
     excel_path: Optional[str] = Query(None)
 ):
+    """
+    Parse a resume with NER and optionally store in ChromaDB.
+    
+    Upload a resume (text or LaTeX) to extract entities using BERT NER,
+    optionally store in vector database, and optionally export to Excel.
+    """
     try:
         content = await resume.read()
         text = content.decode('utf-8', errors='ignore')
@@ -132,6 +152,12 @@ async def parse_resume_text(
     export_to_excel: bool = Query(False),
     excel_path: Optional[str] = Query(None)
 ):
+    """
+    Parse resume from text content.
+    
+    Provide raw resume text to extract entities using BERT NER,
+    optionally store in vector database, and optionally export to Excel.
+    """
     try:
         parser = get_enhanced_parser()
         
@@ -165,14 +191,20 @@ async def parse_resume_text(
 
 @router.get("/search")
 async def search_resumes(
-    query: str = Query(...),
-    search_type: str = Query("text"),
-    top_k: int = Query(10)
+    query: str = Query(..., description="Search query"),
+    search_type: str = Query("text", description="Type of search: text, skill, or experience"),
+    top_k: int = Query(10, description="Number of results to return")
 ):
+    """
+    Search resumes using vector similarity.
+    
+    Search stored resumes by semantic similarity using BERT embeddings.
+    """
     try:
         parser = get_enhanced_parser()
         
-        results = parser.search_resumes(query, search_type, top_k)
+        results = parser.search_resumes(query, search_type)
+        results = results[:top_k]
         
         return {
             "status": "success",
@@ -186,6 +218,11 @@ async def search_resumes(
 
 @router.get("/all")
 async def get_all_resumes():
+    """
+    Get all stored resumes.
+    
+    Retrieve all resumes stored in the vector database.
+    """
     try:
         parser = get_enhanced_parser()
         resumes = parser.get_all_resumes()
@@ -201,6 +238,11 @@ async def get_all_resumes():
 
 @router.delete("/{resume_id}")
 async def delete_resume(resume_id: str):
+    """
+    Delete a resume from storage.
+    
+    Remove a resume and its embeddings from the vector database.
+    """
     try:
         parser = get_enhanced_parser()
         success = parser.delete_resume(resume_id)
@@ -217,13 +259,18 @@ async def delete_resume(resume_id: str):
 
 @router.post("/export-excel")
 async def export_resumes_to_excel(
-    resume_ids: List[str] = None,
-    output_path: str = Query("resumes_export.xlsx")
+    resume_ids: Optional[List[str]] = Query(None, description="List of resume IDs to export"),
+    output_path: str = Query("resumes_export.xlsx", description="Output file path")
 ):
+    """
+    Export resumes to Excel.
+    
+    Export selected or all resumes to an Excel spreadsheet.
+    """
     try:
         parser = get_enhanced_parser()
         
-        if resume_ids:
+        if resume_ids and len(resume_ids) > 0:
             resumes = []
             for rid in resume_ids:
                 all_resumes = parser.get_all_resumes()
@@ -256,6 +303,12 @@ async def export_resumes_to_excel(
 
 @router.post("/optimize")
 async def optimize_resume(request: OptimizeRequest):
+    """
+    Optimize a resume for a job description.
+    
+    Parse a LaTeX resume and optimize it for ATS compatibility
+    based on the provided job description.
+    """
     try:
         if not os.path.exists(request.resume_path):
             raise HTTPException(status_code=404, detail="Resume file not found")
@@ -290,6 +343,12 @@ async def optimize_resume(request: OptimizeRequest):
 
 @router.post("/optimize-text")
 async def optimize_resume_text(request: JobDescriptionRequest):
+    """
+    Optimize the default resume for a job description.
+    
+    Uses the default main.tex resume and optimizes it for
+    the provided job description.
+    """
     try:
         latex_path = "main.tex"
         

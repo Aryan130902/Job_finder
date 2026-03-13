@@ -1,10 +1,9 @@
-import uvicorn
+"""
+API Package.
 
+This package contains FastAPI routers and endpoints.
+"""
 
-host="0.0.0.0"
-port=8002
-app_name="app.main:app"
+from api.routers import resume
 
-
-if __name__ == '__main__':
-    uvicorn.run(app_name, host=host, port=port)
+__all__ = ["resume"]

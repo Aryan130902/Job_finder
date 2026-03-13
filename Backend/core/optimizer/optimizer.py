@@ -1,11 +1,19 @@
+"""
+Optimizer Module - ATS Resume Optimization.
+
+This module provides functionality to optimize resumes for
+Applicant Tracking Systems (ATS) based on job requirements.
+"""
+
 from typing import List, Dict, Optional
 from dataclasses import dataclass, field
-from core.resume.parser import Resume, Experience, Project, Skill
+from core.parser.latex_parser import Resume, Experience, Project, Skill
 from core.jobs.analyzer import JobRequirements
 
 
 @dataclass
 class ATSResume:
+    """ATS-optimized resume representation."""
     name: str
     phone: str
     email: str
@@ -24,12 +32,32 @@ class ATSResume:
 
 
 class ResumeEditor:
+    """
+    Editor for optimizing resumes for ATS systems.
+    
+    Analyzes job requirements and restructures resume content
+    to maximize ATS compatibility and keyword matching.
+    """
+    
     def __init__(self, resume: Resume, requirements: JobRequirements):
+        """
+        Initialize the resume editor.
+        
+        Args:
+            resume: Parsed resume object
+            requirements: Job requirements to optimize for
+        """
         self.resume = resume
         self.requirements = requirements
         self.job_keywords = set(k.lower() for k in requirements.keywords)
     
     def optimize_for_ats(self) -> ATSResume:
+        """
+        Optimize resume for ATS.
+        
+        Returns:
+            ATS-optimized resume object
+        """
         ats_resume = ATSResume(
             name=self.resume.name,
             phone=self.resume.phone,
@@ -46,6 +74,7 @@ class ResumeEditor:
         return ats_resume
     
     def _generate_summary(self) -> str:
+        """Generate ATS-friendly professional summary."""
         role = self.requirements.title or "Software Engineer"
         
         primary_skills = self.requirements.required_skills[:3]
@@ -61,6 +90,7 @@ class ResumeEditor:
         return summary
     
     def _optimize_experience(self) -> List[Dict]:
+        """Optimize experience entries for ATS."""
         optimized = []
         
         for exp in self.resume.experience:
@@ -86,6 +116,7 @@ class ResumeEditor:
         return optimized
     
     def _ats_optimize_bullet(self, bullet: str) -> Optional[str]:
+        """Optimize a single bullet point for ATS."""
         bullet_lower = bullet.lower()
         
         if any(kw in bullet_lower for kw in self.job_keywords):
@@ -117,6 +148,7 @@ class ResumeEditor:
         return None
     
     def _optimize_projects(self) -> List[Dict]:
+        """Optimize project entries for ATS."""
         optimized = []
         
         for proj in self.resume.projects:
@@ -141,6 +173,7 @@ class ResumeEditor:
         return optimized
     
     def _optimize_skills(self) -> Dict[str, List[str]]:
+        """Optimize skills section for ATS."""
         optimized_skills = {}
         
         all_resume_skills = []
@@ -181,6 +214,7 @@ class ResumeEditor:
         return optimized_skills
     
     def _optimize_education(self) -> List[Dict]:
+        """Optimize education section for ATS."""
         optimized = []
         
         for edu in self.resume.education:
@@ -196,6 +230,16 @@ class ResumeEditor:
 
 
 def optimize_resume_for_job(resume: Resume, job_description: str) -> ATSResume:
+    """
+    Convenience function to optimize a resume for a job description.
+    
+    Args:
+        resume: Parsed resume object
+        job_description: Job description text
+        
+    Returns:
+        ATS-optimized resume
+    """
     from core.jobs.analyzer import analyze_job_description
     
     requirements = analyze_job_description(job_description)

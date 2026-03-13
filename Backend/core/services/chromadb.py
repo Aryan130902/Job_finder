@@ -1,13 +1,32 @@
+"""
+ChromaDB Service for Resume Vector Storage and Search.
+
+This module provides vector embedding storage and semantic search
+capabilities for resumes using ChromaDB.
+"""
+
 import chromadb
 from chromadb.config import Settings
 from typing import List, Dict, Optional, Any
 import uuid
-import json
 from datetime import datetime
 
 
 class ChromaDBService:
+    """
+    Service for managing resume embeddings in ChromaDB.
+    
+    Provides methods for adding, searching, updating, and deleting
+    resume embeddings with metadata.
+    """
+    
     def __init__(self, persist_directory: str = "./chroma_db"):
+        """
+        Initialize the ChromaDB service.
+        
+        Args:
+            persist_directory: Directory to persist the ChromaDB database
+        """
         self.client = chromadb.PersistentClient(path=persist_directory)
         self.resume_collection = self.client.get_or_create_collection(
             name="resumes",
@@ -23,6 +42,18 @@ class ChromaDBService:
         )
     
     def _generate_embedding(self, text: str, bert_model, bert_tokenizer, device) -> List[float]:
+        """
+        Generate BERT embedding for text.
+        
+        Args:
+            text: Text to generate embedding for
+            bert_model: BERT model instance
+            bert_tokenizer: BERT tokenizer instance
+            device: torch device
+            
+        Returns:
+            List of float values representing the embedding
+        """
         import torch
         inputs = bert_tokenizer(text, return_tensors="pt", truncation=True, max_length=512, padding=True)
         inputs = {k: v.to(device) for k, v in inputs.items()}
@@ -40,6 +71,18 @@ class ChromaDBService:
         bert_tokenizer,
         device
     ) -> str:
+        """
+        Add a resume to the vector database.
+        
+        Args:
+            resume_data: Dictionary containing resume information
+            bert_model: BERT model for embedding generation
+            bert_tokenizer: BERT tokenizer
+            device: torch device
+            
+        Returns:
+            Generated resume ID
+        """
         resume_id = str(uuid.uuid4())
         
         combined_text = self._create_combined_text(resume_data)
@@ -72,6 +115,7 @@ class ChromaDBService:
         return resume_id
     
     def _create_combined_text(self, resume_data: Dict) -> str:
+        """Create combined text representation of resume for embedding."""
         parts = []
         
         if resume_data.get("name"):
@@ -105,6 +149,7 @@ class ChromaDBService:
         bert_tokenizer,
         device
     ):
+        """Add skill embeddings to the skills collection."""
         skills = resume_data.get("skills", [])
         
         for i, skill in enumerate(skills):
@@ -129,6 +174,7 @@ class ChromaDBService:
         bert_tokenizer,
         device
     ):
+        """Add experience embeddings to the experience collection."""
         companies = resume_data.get("company_name", [])
         designations = resume_data.get("designation", [])
         
@@ -156,6 +202,19 @@ class ChromaDBService:
         device,
         top_k: int = 10
     ) -> List[Dict]:
+        """
+        Search resumes by skill.
+        
+        Args:
+            skill_query: Skill to search for
+            bert_model: BERT model
+            bert_tokenizer: BERT tokenizer
+            device: torch device
+            top_k: Number of results to return
+            
+        Returns:
+            List of matching resumes with metadata
+        """
         query_embedding = self._generate_embedding(skill_query, bert_model, bert_tokenizer, device)
         
         results = self.skills_collection.query(
@@ -173,6 +232,19 @@ class ChromaDBService:
         device,
         top_k: int = 10
     ) -> List[Dict]:
+        """
+        Search resumes by text query.
+        
+        Args:
+            query_text: Text query
+            bert_model: BERT model
+            bert_tokenizer: BERT tokenizer
+            device: torch device
+            top_k: Number of results to return
+            
+        Returns:
+            List of matching resumes with metadata
+        """
         query_embedding = self._generate_embedding(query_text, bert_model, bert_tokenizer, device)
         
         results = self.resume_collection.query(
@@ -190,6 +262,19 @@ class ChromaDBService:
         device,
         top_k: int = 10
     ) -> List[Dict]:
+        """
+        Search resumes by experience.
+        
+        Args:
+            experience_query: Experience query
+            bert_model: BERT model
+            bert_tokenizer: BERT tokenizer
+            device: torch device
+            top_k: Number of results to return
+            
+        Returns:
+            List of matching resumes with metadata
+        """
         query_embedding = self._generate_embedding(experience_query, bert_model, bert_tokenizer, device)
         
         results = self.experience_collection.query(
@@ -200,6 +285,7 @@ class ChromaDBService:
         return self._format_search_results(results)
     
     def _format_search_results(self, results: Dict) -> List[Dict]:
+        """Format ChromaDB query results into a list of dictionaries."""
         formatted = []
         
         if not results or not results.get("ids"):
@@ -215,6 +301,15 @@ class ChromaDBService:
         return formatted
     
     def get_resume_by_id(self, resume_id: str) -> Optional[Dict]:
+        """
+        Get a specific resume by ID.
+        
+        Args:
+            resume_id: Resume ID to retrieve
+            
+        Returns:
+            Resume data or None if not found
+        """
         results = self.resume_collection.get(ids=[resume_id])
         
         if not results or not results.get("ids"):
@@ -227,6 +322,12 @@ class ChromaDBService:
         }
     
     def get_all_resumes(self) -> List[Dict]:
+        """
+        Get all resumes from the database.
+        
+        Returns:
+            List of all resumes with metadata
+        """
         results = self.resume_collection.get()
         
         if not results or not results.get("ids"):
@@ -242,6 +343,15 @@ class ChromaDBService:
         return resumes
     
     def delete_resume(self, resume_id: str) -> bool:
+        """
+        Delete a resume and its associated embeddings.
+        
+        Args:
+            resume_id: ID of the resume to delete
+            
+        Returns:
+            True if successful, False otherwise
+        """
         try:
             self.resume_collection.delete(ids=[resume_id])
             self.skills_collection.delete(where={"resume_id": resume_id})
@@ -258,6 +368,19 @@ class ChromaDBService:
         bert_tokenizer,
         device
     ) -> bool:
+        """
+        Update a resume in the database.
+        
+        Args:
+            resume_id: ID of the resume to update
+            resume_data: New resume data
+            bert_model: BERT model
+            bert_tokenizer: BERT tokenizer
+            device: torch device
+            
+        Returns:
+            True if successful, False otherwise
+        """
         try:
             self.delete_resume(resume_id)
             self.add_resume(resume_data, bert_model, bert_tokenizer, device)
@@ -266,12 +389,28 @@ class ChromaDBService:
             return False
     
     def count_resumes(self) -> int:
+        """
+        Get the total number of resumes in the database.
+        
+        Returns:
+            Count of resumes
+        """
         return self.resume_collection.count()
 
 
 _chroma_service = None
 
+
 def get_chroma_service(persist_directory: str = "./chroma_db") -> ChromaDBService:
+    """
+    Get or create a singleton ChromaDB service instance.
+    
+    Args:
+        persist_directory: Directory for database persistence
+        
+    Returns:
+        ChromaDBService instance
+    """
     global _chroma_service
     if _chroma_service is None:
         _chroma_service = ChromaDBService(persist_directory)

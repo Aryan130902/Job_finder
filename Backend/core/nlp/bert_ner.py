@@ -1,12 +1,25 @@
+"""
+BERT-based Named Entity Recognition (NER) for Resume Extraction.
+
+This module provides NLP capabilities for extracting structured information
+from resume text using BERT models.
+"""
+
 import os
 import re
 import torch
 from transformers import BertTokenizer, BertForTokenClassification, BertModel, BertTokenizerFast
-from typing import Dict, List, Optional, Tuple
-import numpy as np
+from typing import Dict, List, Optional
 
 
 class BERTNERExtractor:
+    """
+    Extracts named entities from resume text using BERT.
+    
+    Supports extraction of names, emails, phone numbers, education details,
+    companies, designations, skills, and experience information.
+    """
+    
     LABEL_MAP = {
         "O": "Outside",
         "B-NAME": "Name",
@@ -33,8 +46,17 @@ class BERTNERExtractor:
         "I-YEAR": "Year",
     }
 
-    def __init__(self, model_path: str = None):
-        self.model_path = model_path or r"C:\Users\aryan\.cache\huggingface\hub\models--bert-base-uncased\snapshots\86b5e0934494bd15c9632b12f734a8a67f723594"
+    def __init__(self, model_path: Optional[str] = None):
+        """
+        Initialize the BERT NER extractor.
+        
+        Args:
+            model_path: Path to the BERT model. If None, uses default cache location.
+        """
+        self.model_path = model_path or os.path.expanduser(
+            r"C:\Users\aryan\.cache\huggingface\hub\models--bert-base-uncased"
+            r"\snapshots\86b5e0934494bd15c9632b12f734a8a67f723594"
+        )
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
         self.tokenizer = BertTokenizerFast.from_pretrained(self.model_path)
@@ -46,6 +68,7 @@ class BERTNERExtractor:
         self._init_ner_head()
     
     def _init_ner_head(self):
+        """Initialize the NER classification head."""
         num_labels = len(self.LABEL_MAP)
         self.ner_head = BertForTokenClassification.from_pretrained(
             self.model_path,
@@ -55,9 +78,19 @@ class BERTNERExtractor:
         self.ner_head.eval()
     
     def _get_label_id(self, label: str) -> int:
+        """Get label ID from label string."""
         return list(self.LABEL_MAP.keys()).index(label)
     
     def _extract_entities(self, text: str) -> List[Dict]:
+        """
+        Extract entities using BERT NER model.
+        
+        Args:
+            text: Input text to extract entities from
+            
+        Returns:
+            List of extracted entities with type and text
+        """
         words = text.split()
         encodings = self.tokenizer(
             words,
@@ -81,6 +114,7 @@ class BERTNERExtractor:
         entities = []
         current_entity = None
         current_type = None
+        current_text = ""
         
         for idx, (word_id, pred) in enumerate(zip(word_ids, predictions)):
             if word_id is None:
@@ -110,6 +144,18 @@ class BERTNERExtractor:
         return entities
     
     def extract_entities_rule_based(self, text: str) -> Dict[str, List[str]]:
+        """
+        Extract entities using rule-based patterns.
+        
+        Uses regex patterns to extract common resume fields like
+        emails, phone numbers, education, skills, etc.
+        
+        Args:
+            text: Input text to extract entities from
+            
+        Returns:
+            Dictionary mapping entity types to list of extracted values
+        """
         entities = {
             "name": [],
             "email": [],
@@ -158,7 +204,7 @@ class BERTNERExtractor:
             'machine learning', 'deep learning', 'tensorflow', 'pytorch', 'keras',
             'nlp', 'computer vision', 'data science', 'data analysis', 'sql', 'tableau',
             'html', 'css', 'bootstrap', 'typescript', 'rest api', 'graphql', 'microservices',
-            'linux', 'unix', 'bash', 'powershell', ' Agile', 'scrum', 'jira', 'rest', 'api'
+            'linux', 'unix', 'bash', 'powershell', 'agile', 'scrum', 'rest', 'api'
         ]
         
         text_lower = text.lower()
@@ -185,25 +231,48 @@ class BERTNERExtractor:
         return entities
     
     def extract_from_text(self, text: str) -> Dict:
+        """
+        Extract all entities from text using rule-based extraction.
+        
+        Args:
+            text: Input resume text
+            
+        Returns:
+            Dictionary of extracted entities
+        """
         entities = self.extract_entities_rule_based(text)
         
         first_line = text.split('\n')[0].strip()
-        if first_line and not re.match(email_pattern, first_line) and not re.match(phone_pattern, first_line):
-            if len(first_line.split()) <= 4:
-                if not entities["name"]:
-                    entities["name"] = [first_line]
+        if first_line:
+            email_check = re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b')
+            phone_check = re.compile(r'(?:\+?1[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}')
+            if not email_check.match(first_line) and not phone_check.match(first_line):
+                if len(first_line.split()) <= 4:
+                    if not entities["name"]:
+                        entities["name"] = [first_line]
         
         return entities
     
     def extract_from_file(self, file_path: str) -> Dict:
+        """
+        Extract entities from a file.
+        
+        Args:
+            file_path: Path to the resume file
+            
+        Returns:
+            Dictionary of extracted entities
+        """
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             text = f.read()
         return self.extract_from_text(text)
 
 
-email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
-phone_pattern = r'(?:\+?1[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}|(?:\+?91[-.\s]?)?[0-9]{10}'
-
-
 def create_ner_extractor() -> BERTNERExtractor:
+    """
+    Factory function to create a BERT NER extractor.
+    
+    Returns:
+        Initialized BERTNERExtractor instance
+    """
     return BERTNERExtractor()

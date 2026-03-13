@@ -1,13 +1,39 @@
+"""
+Resume Document Generator.
+
+This module provides functionality to generate resume documents
+in various formats (txt, docx) from ATS-optimized resume data.
+"""
+
 from typing import Optional
-from core.editor.optimizer import ATSResume
+from core.optimizer.optimizer import ATSResume
 import os
 
 
 class DocumentGenerator:
+    """
+    Generator for creating resume documents in various formats.
+    
+    Supports generating resumes in text and DOCX formats
+    from ATS-optimized resume data.
+    """
+    
     def __init__(self, ats_resume: ATSResume):
+        """
+        Initialize the document generator.
+        
+        Args:
+            ats_resume: ATS-optimized resume object
+        """
         self.ats_resume = ats_resume
     
     def to_text(self) -> str:
+        """
+        Generate text representation of the resume.
+        
+        Returns:
+            Resume as formatted text string
+        """
         lines = []
         
         lines.append(self.ats_resume.name.upper())
@@ -72,12 +98,21 @@ class DocumentGenerator:
         return "\n".join(lines)
     
     def to_docx(self, output_path: str) -> bool:
+        """
+        Generate DOCX document.
+        
+        Args:
+            output_path: Path to save the DOCX file
+            
+        Returns:
+            True if successful, False otherwise
+        """
         try:
             from docx import Document
             from docx.shared import Pt, Inches
             from docx.enum.text import WD_ALIGN_PARAGRAPH
         except ImportError:
-            print("python-docx not installed. Installing...")
+            print("python-docx not installed. Please install it with: pip install python-docx")
             return False
         
         doc = Document()
@@ -140,6 +175,19 @@ class DocumentGenerator:
         return True
     
     def save(self, output_path: str, format: str = "txt") -> bool:
+        """
+        Save resume to file in specified format.
+        
+        Args:
+            output_path: Path to save the file
+            format: Output format - "txt" or "docx"
+            
+        Returns:
+            True if successful, False otherwise
+            
+        Raises:
+            ValueError: If format is not supported
+        """
         if format == "txt":
             content = self.to_text()
             os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
@@ -152,6 +200,21 @@ class DocumentGenerator:
             raise ValueError(f"Unsupported format: {format}")
 
 
-def generate_resume_document(ats_resume: ATSResume, output_path: str, format: str = "txt") -> bool:
+def generate_resume_document(
+    ats_resume: ATSResume,
+    output_path: str,
+    format: str = "txt"
+) -> bool:
+    """
+    Convenience function to generate a resume document.
+    
+    Args:
+        ats_resume: ATS-optimized resume object
+        output_path: Path to save the file
+        format: Output format - "txt" or "docx"
+        
+    Returns:
+        True if successful, False otherwise
+    """
     generator = DocumentGenerator(ats_resume)
     return generator.save(output_path, format)
