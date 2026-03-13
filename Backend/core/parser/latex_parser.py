@@ -6,9 +6,8 @@ for internal representation.
 """
 
 import re
-from typing import Dict, List, Optional, Any
+from typing import List, Optional
 from dataclasses import dataclass, field
-from datetime import datetime
 
 
 @dataclass
@@ -80,241 +79,353 @@ class Resume:
     achievements: list = field(default_factory=list)
 
 
+def _clean(text: str) -> str:
+    """Strip LaTeX formatting commands and extra whitespace from a string."""
+    # Remove \textbf{...}, \textit{...}, \footnotesize{...}, etc.
+    text = re.sub(r'\\(?:textbf|textit|emph|footnotesize|small|large|Large|href\{[^}]*\})\{([^}]*)\}', r'\1', text)
+    # Remove standalone commands like \textbf, \small, etc.
+    text = re.sub(r'\\[a-zA-Z]+\*?', '', text)
+    # Remove leftover braces
+    text = re.sub(r'[{}]', '', text)
+    # Collapse whitespace
+    return re.sub(r'\s+', ' ', text).strip()
+
+
+def _extract_section(content: str, section_name: str) -> Optional[str]:
+    """
+    Extract the raw content of a named section.
+    Sections are delimited by \\section{...} headers.
+    """
+    pattern = rf'\\section\{{[^}}]*{re.escape(section_name)}[^}}]*\}}(.*?)(?=\\section|\Z)'
+    match = re.search(pattern, content, re.DOTALL | re.IGNORECASE)
+    return match.group(1) if match else None
+
+
+def _extract_item_bullets(block: str) -> List[str]:
+    """
+    Extract all \\item {...} bullet points from a block of LaTeX.
+    Handles items that may span multiple lines inside braces.
+    """
+    bullets = []
+    # Match \item followed by optional space and a brace-enclosed block
+    for m in re.finditer(r'\\item\s*\{((?:[^{}]|\{[^{}]*\})*)\}', block, re.DOTALL):
+        bullets.append(_clean(m.group(1)))
+    # Also match \item without braces (plain text until next \item or end)
+    # Used for positions/achievements inline descriptions
+    return bullets
+
+
 class LatexResumeParser:
     """
     Parser for LaTeX formatted resumes.
-    
+
     Extracts structured information from LaTeX resume files including
     personal info, education, experience, projects, skills, and achievements.
     """
-    
+
     def __init__(self, latex_content: str):
-        """
-        Initialize parser with LaTeX content.
-        
-        Args:
-            latex_content: Raw LaTeX resume content as string
-        """
         self.content = latex_content
-    
+
     def parse(self) -> Resume:
-        """
-        Parse the LaTeX content into a Resume object.
-        
-        Returns:
-            Resume object containing all extracted information
-        """
         resume = Resume(
             name=self._extract_name(),
             phone=self._extract_phone(),
             email=self._extract_email(),
             linkedin=self._extract_linkedin(),
-            portfolio=self._extract_portfolio()
+            portfolio=self._extract_portfolio(),
         )
-        
         resume.education = self._extract_education()
         resume.experience = self._extract_experience()
         resume.projects = self._extract_projects()
         resume.skills = self._extract_skills()
         resume.positions = self._extract_positions()
         resume.achievements = self._extract_achievements()
-        
         return resume
-    
+
+    # ------------------------------------------------------------------
+    # Header fields
+    # ------------------------------------------------------------------
+
     def _extract_name(self) -> str:
-        """Extract candidate name from LaTeX."""
-        match = re.search(r'\\textbf\{\\Large\s*([^}]+)\}', self.content)
+        r"""Matches: \textbf{\Large Aryan Tiwari}"""
+        match = re.search(r'\\textbf\{\\Large\s+([^}]+)\}', self.content)
         return match.group(1).strip() if match else ""
-    
+
     def _extract_phone(self) -> str:
-        """Extract phone number from LaTeX."""
-        match = re.search(r'\\faPhone[^}]*([\d\-\s\+]+)', self.content)
+        """Matches the phone number after the faPhone icon."""
+        match = re.search(r'\\faPhone[\\~ ]+([+\d\s\-]+)', self.content)
         return match.group(1).strip() if match else ""
-    
+
     def _extract_email(self) -> str:
-        """Extract email address from LaTeX."""
+        r"""Matches: \href{mailto:email}{...}"""
         match = re.search(r'\\href\{mailto:([^}]+)\}', self.content)
         return match.group(1).strip() if match else ""
-    
+
     def _extract_linkedin(self) -> Optional[str]:
-        """Extract LinkedIn profile URL from LaTeX."""
-        match = re.search(r'LinkedIn Profile\s*\\href\{([^}]+)\}', self.content)
+        r"""Matches: \href{https://linkedin.com/...}{LinkedIn Profile}"""
+        match = re.search(r'\\href\{([^}]+)\}\{LinkedIn Profile\}', self.content)
         return match.group(1).strip() if match else None
-    
+
     def _extract_portfolio(self) -> Optional[str]:
-        """Extract portfolio website URL from LaTeX."""
-        match = re.search(r'Portfolio Website\s*\\href\{([^}]+)\}', self.content)
+        r"""Matches: \href{https://...}{Portfolio Website}"""
+        match = re.search(r'\\href\{([^}]+)\}\{Portfolio Website\}', self.content)
         return match.group(1).strip() if match else None
-    
-    def _extract_education(self) -> list:
-        """Extract education entries from LaTeX."""
+
+    # ------------------------------------------------------------------
+    # Education
+    # ------------------------------------------------------------------
+
+    def _extract_education(self) -> List[Education]:
+        """
+        LaTeX pattern:
+            \\resumeSubheading
+            {Institution}{CGPA : 8.2}
+            {Degree}{Year}
+        """
+        section = _extract_section(self.content, 'Education')
+        if not section:
+            return []
+
         education = []
-        pattern = r'\\resumeSubheading\{([^}]+)\}\{([^}]+)\}\{([^}]+)\}\{([^}]+)\}'
-        matches = re.findall(pattern, self.content)
-        
-        for match in matches:
-            if 'CGPA' in match[1] or 'CGPA' in match[2]:
-                education.append(Education(
-                    institution=match[0],
-                    cgpa=match[1],
-                    degree=match[2],
-                    year=match[3]
-                ))
+        # resumeSubheading takes 4 args: {arg1}{arg2}{arg3}{arg4}
+        # In the template: arg1=institution, arg2=CGPA/grade, arg3=degree, arg4=year
+        pattern = (
+            r'\\resumeSubheading\s*'
+            r'\{([^}]+)\}\s*'   # institution
+            r'\{([^}]+)\}\s*'   # CGPA line  (e.g. "CGPA : 8.2")
+            r'\{([^}]+)\}\s*'   # degree
+            r'\{([^}]+)\}'      # year
+        )
+        for m in re.finditer(pattern, section, re.DOTALL):
+            institution, cgpa_raw, degree, year = (g.strip() for g in m.groups())
+            # Extract numeric CGPA if present
+            cgpa_match = re.search(r'[\d.]+', cgpa_raw)
+            cgpa = cgpa_match.group(0) if cgpa_match else cgpa_raw
+            education.append(Education(
+                institution=_clean(institution),
+                degree=_clean(degree),
+                cgpa=cgpa,
+                year=_clean(year),
+            ))
         return education
-    
-    def _extract_experience(self) -> list:
-        """Extract work experience entries from LaTeX."""
-        experience = []
-        exp_section = re.search(r'\\section\{Experience\}(.*?)(?=\\section|\Z)', self.content, re.DOTALL)
-        if not exp_section:
-            return experience
-        
-        exp_content = exp_section.group(1)
-        entries = re.findall(
-            r'\\resumeSubheading\{([^}]+)\}\{([^}]+)\}\{([^}]+)\}\{([^}]+)\}',
-            exp_content
+
+    # ------------------------------------------------------------------
+    # Experience
+    # ------------------------------------------------------------------
+
+    def _extract_experience(self) -> List[Experience]:
+        """
+        LaTeX pattern:
+            \\resumeSubheading{Company}{Location}{Role}{Duration}
+            \\resumeItemListStart
+              \\item {bullet ...}
+            \\resumeItemListEnd
+        """
+        section = _extract_section(self.content, 'Experience')
+        if not section:
+            return []
+
+        experiences = []
+        # Split on each \resumeSubheading to get per-entry blocks
+        entry_pattern = (
+            r'\\resumeSubheading\s*'
+            r'\{([^}]+)\}\s*'   # company
+            r'\{([^}]+)\}\s*'   # location
+            r'\{([^}]+)\}\s*'   # role
+            r'\{([^}]+)\}'      # duration
         )
-        
-        for entry in entries:
-            bullets = re.findall(
-                r'\\item\s*\{([^}]+)\}',
-                exp_content
-            )
-            
-            company = entry[0]
-            role = entry[2]
-            location = entry[1]
-            duration = entry[3]
-            
-            exp_bullets = []
-            for bullet in bullets:
-                if company in bullet or role in bullet:
-                    exp_bullets.append(bullet.strip())
-            
-            experience.append(Experience(
-                company=company,
-                location=location,
-                role=role,
-                duration=duration,
-                bullet_points=exp_bullets
+        # Find all subheading positions
+        matches = list(re.finditer(entry_pattern, section))
+        for i, m in enumerate(matches):
+            company, location, role, duration = (g.strip() for g in m.groups())
+            # The bullet block is everything between this match's end and the next match's start
+            block_start = m.end()
+            block_end = matches[i + 1].start() if i + 1 < len(matches) else len(section)
+            block = section[block_start:block_end]
+            bullets = _extract_item_bullets(block)
+            experiences.append(Experience(
+                company=_clean(company),
+                location=_clean(location),
+                role=_clean(role),
+                duration=_clean(duration),
+                bullet_points=bullets,
             ))
-        
-        return experience
-    
-    def _extract_projects(self) -> list:
-        """Extract project entries from LaTeX."""
+        return experiences
+
+    # ------------------------------------------------------------------
+    # Projects
+    # ------------------------------------------------------------------
+
+    def _extract_projects(self) -> List[Project]:
+        """
+        LaTeX pattern:
+            \\resumeProject{Name}{Link or Tech Stack}{Year}{optional 4th}
+            \\resumeItemListStart
+              \\item {bullet}
+            \\resumeItemListEnd
+        """
+        section = _extract_section(self.content, 'Projects')
+        if not section:
+            return []
+
         projects = []
-        proj_section = re.search(r'\\section\{Projects\}(.*?)(?=\\section|\Z)', self.content, re.DOTALL)
-        if not proj_section:
-            return projects
-        
-        proj_content = proj_section.group(1)
-        entries = re.findall(
-            r'\\resumeProject\{([^}]+)\}\{([^}]+)\}\{([^}]+)\}(?:\{([^}]+)\})?',
-            proj_content
+        entry_pattern = (
+            r'\\resumeProject\s*'
+            r'\{([^}]+)\}\s*'          # name
+            r'\{((?:[^{}]|\{[^}]*\})*)\}\s*'  # link or tech (may contain \href{...}{...})
+            r'\{([^}]*)\}'             # year
+            r'(?:\s*\{([^}]*)\})?'     # optional 4th arg
         )
-        
-        for entry in entries:
-            bullets = re.findall(r'\\item\s*\{([^}]+)\}', proj_content)
+        matches = list(re.finditer(entry_pattern, section))
+        for i, m in enumerate(matches):
+            name = m.group(1).strip()
+            second_arg = m.group(2).strip()
+            year = m.group(3).strip()
+
+            # Determine if second arg is a hyperlink or a tech stack description
+            href_match = re.search(r'\\href\{([^}]+)\}', second_arg)
+            if href_match:
+                link = href_match.group(1).strip()
+                tech_stack = None
+            else:
+                link = None
+                # Strip "Tech Stack : " prefix if present
+                tech_stack = re.sub(r'^Tech Stack\s*:\s*', '', _clean(second_arg)).strip()
+
+            block_start = m.end()
+            block_end = matches[i + 1].start() if i + 1 < len(matches) else len(section)
+            block = section[block_start:block_end]
+            bullets = _extract_item_bullets(block)
+
             projects.append(Project(
-                name=entry[0],
-                link=entry[1] if 'http' in entry[1] else None,
-                tech_stack=entry[1] if 'http' not in entry[1] else None,
-                year=entry[2],
-                bullet_points=bullets
+                name=_clean(name),
+                link=link,
+                tech_stack=tech_stack,
+                year=_clean(year),
+                bullet_points=bullets,
             ))
-        
         return projects
-    
-    def _extract_skills(self) -> list:
-        """Extract skills from LaTeX."""
+
+    # ------------------------------------------------------------------
+    # Skills
+    # ------------------------------------------------------------------
+
+    def _extract_skills(self) -> List[Skill]:
+        """
+        LaTeX pattern:
+            \\textbf{Category}: skill1, skill2, ...
+        """
+        section = _extract_section(self.content, 'Skills')
+        if not section:
+            return []
+
         skills = []
-        skill_section = re.search(
-            r'\\section\{Technical.*?Skills\}(.*?)(?=\\section|\Z)',
-            self.content,
-            re.DOTALL
-        )
-        if not skill_section:
-            return skills
-        
-        skill_content = skill_section.group(1)
-        
-        category_matches = re.findall(
-            r'\\textbf\{([^}]+)\}:\s*([^\n]+)',
-            skill_content
-        )
-        
-        for category, skill_list in category_matches:
-            skills.append(Skill(
-                category=category.strip(),
-                skills=[s.strip() for s in skill_list.split(',')]
-            ))
-        
+        # Matches \textbf{Category}: comma-separated skills (rest of the line)
+        pattern = r'\\textbf\{([^}]+)\}\s*:\s*([^\n\\]+)'
+        for m in re.finditer(pattern, section):
+            category = m.group(1).strip()
+            raw_skills = m.group(2).strip()
+            # Split on commas, clean each entry
+            skill_list = [s.strip() for s in raw_skills.split(',') if s.strip()]
+            skills.append(Skill(category=category, skills=skill_list))
         return skills
-    
-    def _extract_positions(self) -> list:
-        """Extract positions of responsibility from LaTeX."""
+
+    # ------------------------------------------------------------------
+    # Positions of Responsibility
+    # ------------------------------------------------------------------
+
+    def _extract_positions(self) -> List[Position]:
+        """
+        LaTeX pattern:
+            \\resumePOR{Title, }{Organization}{Duration}
+            Inline description text on next line(s).
+        """
+        section = _extract_section(self.content, 'Positions')
+        if not section:
+            return []
+
         positions = []
-        pos_section = re.search(
-            r'\\section\{Positions.*?\}(.*?)(?=\\section|\Z)',
-            self.content,
-            re.DOTALL
+        entry_pattern = (
+            r'\\resumePOR\s*'
+            r'\{([^}]*)\}\s*'   # title (may end with ", ")
+            r'\{([^}]+)\}\s*'   # organization
+            r'\{([^}]+)\}'      # duration
         )
-        if not pos_section:
-            return positions
-        
-        pos_content = pos_section.group(1)
-        entries = re.findall(
-            r'\\resumePOR\{([^}]*)\}\{([^}]+)\}\{([^}]+)\}',
-            pos_content
-        )
-        
-        for entry in entries:
+        matches = list(re.finditer(entry_pattern, section))
+        for i, m in enumerate(matches):
+            title = m.group(1).strip().rstrip(',').strip()
+            organization = m.group(2).strip()
+            duration = m.group(3).strip()
+
+            # Description is the text between this entry and the next \resumePOR
+            block_start = m.end()
+            block_end = matches[i + 1].start() if i + 1 < len(matches) else len(section)
+            raw_desc = section[block_start:block_end]
+            # Stop at any LaTeX command block / section end markers
+            raw_desc = re.split(r'\\resumeSubHeadingListEnd|\\vspace|\\section', raw_desc)[0]
+            description = _clean(raw_desc)
+
             positions.append(Position(
-                title=entry[0].strip(),
-                organization=entry[1],
-                duration=entry[2]
+                title=_clean(title),
+                organization=_clean(organization),
+                duration=_clean(duration),
+                description=description,
             ))
-        
         return positions
-    
-    def _extract_achievements(self) -> list:
-        """Extract achievements from LaTeX."""
+
+    # ------------------------------------------------------------------
+    # Achievements
+    # ------------------------------------------------------------------
+
+    def _extract_achievements(self) -> List[Achievement]:
+        """
+        LaTeX pattern:
+            \\resumePOR{optional prefix}{Achievement description}{Year}
+
+        The resume uses arg1 as optional prefix (e.g., award name) and
+        arg2 as the main description text.
+        """
+        section = _extract_section(self.content, 'Achievements')
+        if not section:
+            return []
+
         achievements = []
-        ach_section = re.search(
-            r'\\section\{Achievements\}(.*?)(?=\\section|\Z)',
-            self.content,
-            re.DOTALL
+        entry_pattern = (
+            r'\\resumePOR\s*'
+            r'\{([^}]*)\}\s*'                        # arg1: title/prefix (may be empty)
+            r'\{((?:[^{}]|\{[^}]*\})*)\}\s*'         # arg2: description (handles \textbf{...} etc.)
+            r'\{([^}]+)\}'                           # arg3: year
         )
-        if not ach_section:
-            return achievements
-        
-        ach_content = ach_section.group(1)
-        entries = re.findall(
-            r'\\resumePOR\{([^}]*)\}\{([^}]+)\}\{([^}]+)\}',
-            ach_content
-        )
-        
-        for entry in entries:
+        for m in re.finditer(entry_pattern, section):
+            prefix = _clean(m.group(1))
+            description = _clean(m.group(2))
+            year = m.group(3).strip()
+
+            # When arg1 is empty the full description lives in arg2
+            if prefix:
+                title = prefix
+            else:
+                title = description
+                description = ""
+
             achievements.append(Achievement(
-                title=entry[1].strip(),
-                description=entry[0].strip(),
-                year=entry[2]
+                title=title,
+                description=description,
+                year=year,
             ))
-        
         return achievements
 
 
 def parse_latex_resume(file_path: str) -> Resume:
     """
     Utility function to parse a LaTeX resume file.
-    
+
     Args:
         file_path: Path to the LaTeX resume file
-        
+
     Returns:
         Parsed Resume object
-        
+
     Raises:
         FileNotFoundError: If the file does not exist
         IOError: If the file cannot be read

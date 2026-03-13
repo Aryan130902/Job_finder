@@ -77,23 +77,7 @@ async def parse_resume(resume: UploadFile = File(...)):
         
         os.remove(temp_path)
         
-        return {
-            "name": parsed_resume.name,
-            "email": parsed_resume.email,
-            "phone": parsed_resume.phone,
-            "education": [
-                {"institution": e.institution, "degree": e.degree, "cgpa": e.cgpa, "year": e.year}
-                for e in parsed_resume.education
-            ],
-            "experience": [
-                {"company": e.company, "role": e.role, "location": e.location, "duration": e.duration}
-                for e in parsed_resume.experience
-            ],
-            "skills": [
-                {"category": s.category, "skills": s.skills}
-                for s in parsed_resume.skills
-            ]
-        }
+        return parsed_resume
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
