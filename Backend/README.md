@@ -88,11 +88,6 @@ The API will be available at:
 - ReDoc: http://localhost:8000/api/redoc
 - Health Check: http://localhost:8000/health
 
-### Production
-
-```bash
-uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
-```
 
 ## API Endpoints
 
@@ -113,45 +108,6 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
 
 - `POST /api/v1/resume/optimize` - Optimize resume for job description
 - `POST /api/v1/resume/optimize-text` - Optimize default resume
-
-## Usage Examples
-
-### Parse a Resume
-
-```python
-import requests
-
-with open("resume.tex", "rb") as f:
-    response = requests.post(
-        "http://localhost:8000/api/v1/resume/parse-ner",
-        files={"resume": f},
-        data={"store_in_chroma": True}
-    )
-print(response.json())
-```
-
-### Optimize for Job Description
-
-```python
-import requests
-
-job_description = """
-Software Engineer
-Requirements:
-- 3+ years experience with Python
-- Experience with React
-- AWS knowledge
-"""
-
-response = requests.post(
-    "http://localhost:8000/api/v1/resume/optimize-text",
-    json={
-        "job_description": job_description,
-        "company_name": "TechCorp"
-    }
-)
-print(response.json())
-```
 
 ## Development
 
