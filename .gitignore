@@ -1,0 +1,64 @@
+# ========================
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+Lib/
+Scripts/
+Include/
+pyvenv.cfg
+
+# Environment variable files
+.env
+*.env
+
+# Test/report folders
+htmlcov/
+.tox/
+.nox/
+coverage.*
+.cache
+.pytest_cache/
+
+# Logs and runtime files
+*.log
+*.pid
+*.sqlite3
+
+# MyPy & other type checkers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Editors/IDE settings
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Distribution/build folders
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Node.js frontend (if applicable)
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# System/OS files
+.DS_Store
+Thumbs.db
