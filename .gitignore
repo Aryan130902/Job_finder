@@ -62,3 +62,6 @@ frontend/build/
 # System/OS files
 .DS_Store
 Thumbs.db
+
+# ChromaDB persistence directory
+chroma_db/  
